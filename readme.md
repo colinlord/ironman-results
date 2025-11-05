@@ -1,8 +1,8 @@
-# Ironman Race Results Scraper
+# Ironman / Competitor.com Race Results Scraper
 
-A simple, zero-dependency Node.js script to scrape all historical and current race results from an event page and save them as comprehensive CSV files.
+A simple, zero-dependency Node.js script to scrape all historical and current race results from a `labs-v2.competitor.com` event page and save them as comprehensive CSV files.
 
-This script is designed to fetch all available years for a single event group and create a separate, detailed CSV for each year.
+This script is designed to fetch all available years for a single event group (e.g., "IRONMAN 70.3 chattanooga") and create a separate, detailed CSV for each year.
 
 ## Features
 
@@ -52,4 +52,16 @@ The script will then fetch the data for each year and save the CSV files in the 
 This scraper works in three main steps, which is why it's more reliable than a simple HTML scraper:
 
 1.  **Fetch Page Data:** It first fetches the main event group URL and parses the `<script id="__NEXT_DATA__">` JSON blob embedded in the page's HTML.
-2.  **Find All Events:** It finds the `subevents
+2.  **Find All Events:** It finds the `subevents` key in that JSON to get a list of all available years and their unique `wtc_eventid`s.
+3.  **Call the API:** It loops through each event and calls the site's internal API (`/api/results?wtc_eventid=...`) to get the complete, clean JSON for that specific year's results.
+4.  **Save CSVs:** It parses that JSON and saves it to a CSV file named with your base name and the event year.
+
+---
+
+## Troubleshooting
+
+- **"Could not find **NEXT_DATA** script tag...":** The URL you entered is likely incorrect, or the website has changed its HTML structure.
+- **"Could not find "subevents"...":** You may have used a URL for a single race instead of the main "event group" URL that has the year dropdown.
+- **"API request failed...":** The website's API may have changed or is temporarily down.
+
+This script is tailored to the specific JSON structure of this website as of late 2025. Future site updates may require changing the keys the script looks for (e.g., `subevents`, `wtc_eventid`, `resultsJson.value`).
