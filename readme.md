@@ -2,7 +2,7 @@
 
 A simple, zero-dependency Node.js script to scrape all historical and current race results from a `labs-v2.competitor.com` event page and save them as comprehensive CSV files.
 
-This script is designed to fetch all available years for a single event group (e.g., "IRONMAN 70.3 chattanooga") and create a separate, detailed CSV for each year.
+This script is designed to fetch all available years for a single event group (e.g., "IRONMAN 70.3 Chattanooga") and create a separate, detailed CSV for each year.
 
 ## Features
 
@@ -26,17 +26,17 @@ This script is designed to fetch all available years for a single event group (e
 
 ## How to Use
 
-1.  **Save the Script:** Save the code as `scrape.js` in a new folder.
-2.  **Open Your Terminal:** Navigate to the folder where you saved the script.
+1.  **Save the Script:** Save the code as `scraper.js` in a new folder.
+2.  **Open Your Terminal:** Navigate to the folder where you saved the script and run `npm install`.
 3.  **Run the Script:**
     ```bash
-    node scrape.js
+    node scraper.js
     ```
 4.  **Answer the Prompts:**
 
     **Prompt 1:** `Please paste the main event group URL:`
 
-    - You must provide the main "event group" URL. This is the page that shows a dropdown for selecting different years (e.g., 2025, 2024).
+    - You must provide the main "event group" URL. This is the page that shows a dropdown for selecting different years (e.g., 2025, 2024). As of the end of 2025, these pages are embedded as iframes within the results pages for each event on Ironman's website.
     - **Example URL:** `https://labs-v2.competitor.com/results/event/17d618ca-6a56-4aae-bda6-7c221acdbb7c`
 
     **Prompt 2:** `Enter a base name for the event (e.g., chattanooga):`
