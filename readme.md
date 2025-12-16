@@ -26,8 +26,11 @@ This script is designed to fetch all available years for a single event group (e
 
 ## How to Use
 
-1.  **Save the Script:** Save the code as `scraper.js` in a new folder.
-2.  **Open Your Terminal:** Navigate to the folder where you saved the script and run `npm install`.
+1.  **Check out this repo:** Clone or download the repository to your local machine in an empty folder.
+2.  **Open Your Terminal:** Navigate to the folder where you saved the script and install the dependency:
+    ```bash
+    npm install
+    ```
 3.  **Run the Script:**
     ```bash
     node scraper.js
