@@ -315,7 +315,7 @@ function getEventSuffix(eventName) {
       );
     }
 
-    console.log(`Found ${subEvents.length} total events to scrape.`);
+    console.log(`Found ${subEvents.length} total events.`);
 
     const events = [];
     for (const event of subEvents) {
@@ -356,7 +356,41 @@ function getEventSuffix(eventName) {
       event.outputFile = outputFile;
     }
 
-    for (const { eventUuid, eventYear, eventName, outputFile } of events) {
+    const years = [...new Set(events.map((e) => e.eventYear))].sort(
+      (a, b) => b - a
+    );
+    console.log(`Available years: ${years.join(", ")}`);
+
+    const yearChoice = (
+      await io.ask("Enter a year, 'latest', or press Enter for all years: ")
+    )
+      .trim()
+      .toLowerCase();
+
+    const latestOnly = yearChoice === "latest";
+    let selectedEvents = events;
+    if (latestOnly) {
+      // Newest first, so we can stop after the first year that has results
+      // (this year's race may be listed before it has been run).
+      selectedEvents = [...events].sort((a, b) => b.eventYear - a.eventYear);
+    } else if (yearChoice !== "" && yearChoice !== "all") {
+      if (!years.includes(yearChoice)) {
+        throw new Error(
+          `No events found for "${yearChoice}". Available years: ${years.join(", ")}`
+        );
+      }
+      selectedEvents = events.filter((e) => e.eventYear === yearChoice);
+    }
+
+    // With "latest", the newest year that has results or whose request
+    // failed. A failed request doesn't fall back to an older year, since
+    // that year may well have results.
+    let latestYear = null;
+    for (const { eventUuid, eventYear, eventName, outputFile } of selectedEvents) {
+      if (latestOnly && latestYear && eventYear !== latestYear) {
+        break;
+      }
+
       const eventLabel = eventName || eventYear;
       console.log(`--- Processing Event: ${eventLabel} ---`);
 
@@ -371,14 +405,20 @@ function getEventSuffix(eventName) {
         const csvData = convertToCSV(resultsData);
 
         await fs.writeFile(outputFile, csvData);
+        latestYear = eventYear;
         console.log(
           `✅ Successfully saved ${resultsData.length} results to ${outputFile}`
         );
       } catch (apiError) {
+        latestYear = eventYear;
         console.error(
           `Failed to process ${eventLabel} (UUID: ${eventUuid}). Error: ${apiError.message}`
         );
       }
+    }
+
+    if (latestOnly && !latestYear) {
+      console.log("No results found for any year.");
     }
   } catch (error) {
     console.error("An error occurred:", error.message);

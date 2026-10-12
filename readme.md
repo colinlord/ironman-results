@@ -6,7 +6,7 @@ This script is designed to fetch all available years for a single event group (e
 
 ## Features
 
-- **Fetches All Years:** Grabs data for the most recent race _and_ all available past years.
+- **Fetches All Years:** Grabs data for the most recent race _and_ all available past years, or just one year or the most recent year if you prefer.
 - **Comprehensive Data:** Exports 30+ columns, including:
   - Finish times and all splits (Swim, T1, Bike, T2, Run).
   - Raw times in seconds (ideal for analysis).
@@ -14,7 +14,7 @@ This script is designed to fetch all available years for a single event group (e
   - Athlete info (City, State, Country).
   - AWA Points.
 - **No Dependencies:** Uses only built-in Node.js modules (v18+).
-- **Interactive:** Prompts you for the URL and a filename.
+- **Interactive:** Prompts you for the URL, a filename, and which year(s) to download.
 
 ---
 
@@ -45,7 +45,14 @@ This script is designed to fetch all available years for a single event group (e
     - This name is used to create the output files. If you enter `chattanooga`, the script will generate files like `chattanooga_2025.csv`, `chattanooga_2024.csv`, etc.
     - If an event has more than one race in the same year (e.g., the separate Women's and Men's 70.3 World Championship races), each race gets its own file, like `worlds_2025_women.csv` and `worlds_2025_men.csv`.
 
-The script will then fetch the data for each year and save the CSV files in the same directory.
+    **Prompt 3:** `Enter a year, 'latest', or press Enter for all years:`
+
+    - The script first lists the years available for the event.
+    - Press **Enter** (or type `all`) to download every year.
+    - Type a year, like `2025`, to download only that year.
+    - Type `latest` to download only the most recent year that has results. If this year's race is listed but hasn't been run yet, it falls back to the previous year. For events with more than one race in a year (like the Women's and Men's World Championship), all of that year's races are downloaded.
+
+The script will then fetch the data for the selected year(s) and save the CSV files in the same directory.
 
 ---
 
@@ -55,7 +62,7 @@ This scraper works in three main steps, which is why it's more reliable than a s
 
 1.  **Fetch Page Data:** If you entered an ironman.com race page, it goes to that race's `/results` page and follows the embedded `labs-v2.competitor.com` iframe to the event group page. It then parses the `<script id="__NEXT_DATA__">` JSON blob embedded in that page's HTML.
 2.  **Find All Events:** It finds the `subevents` key in that JSON to get a list of all available years and their unique `wtc_eventid`s.
-3.  **Call the API:** It loops through each event and calls the site's internal API (`/api/results?wtc_eventid=...`) to get the complete, clean JSON for that specific year's results.
+3.  **Call the API:** It loops through each selected event and calls the site's internal API (`/api/results?wtc_eventid=...`) to get the complete, clean JSON for that specific year's results.
 4.  **Save CSVs:** It parses that JSON and saves it to a CSV file named with your base name and the event year (plus `_women`/`_men` or similar when a year has more than one race).
 
 ---
