@@ -1,5 +1,8 @@
 {
   "dependencies": {
-    "puppeteer": "^24.29.0"
+    "puppeteer": "^25.13.0"
+  },
+  "allowScripts": {
+    "puppeteer@25.13.0": true
   }
 }
