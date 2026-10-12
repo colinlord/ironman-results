@@ -19,11 +19,9 @@ function createQuestionInterface() {
 }
 
 /**
- * Fetches the HTML from the Group URL and extracts the __NEXT_DATA__ blob.
+ * Fetches the HTML from a URL.
  */
-async function fetchNextData(url) {
-  console.log(`Fetching main event group data from: ${url}`);
-
+async function fetchHtml(url) {
   const response = await fetch(url, {
     headers: {
       "User-Agent":
@@ -35,14 +33,48 @@ async function fetchNextData(url) {
     throw new Error(`Failed to fetch URL. Status: ${response.status}`);
   }
 
-  const htmlContent = await response.text();
+  return response.text();
+}
+
+/**
+ * Finds the competitor.com results iframe embedded in an ironman.com
+ * results page. Skips the other embeds (e.g. ".../results/event/odiv/..."
+ * and ".../clubpoints/...").
+ */
+function findResultsIframeUrl(htmlContent) {
+  const regex =
+    /<iframe[^>]*\ssrc="(https:\/\/labs-v2\.competitor\.com\/results\/event\/[^"\/]+)"/i;
+  const match = htmlContent.match(regex);
+  return match ? match[1].replace(/&amp;/g, "&") : null;
+}
+
+/**
+ * Fetches the HTML from the Group URL and extracts the __NEXT_DATA__ blob.
+ * Accepts either the labs-v2.competitor.com event group URL or an
+ * ironman.com results page that embeds it in an iframe.
+ */
+async function fetchNextData(url) {
+  console.log(`Fetching main event group data from: ${url}`);
+
+  let htmlContent = await fetchHtml(url);
   const regex =
     /<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s;
-  const match = htmlContent.match(regex);
+  let match = htmlContent.match(regex);
+
+  if (!match) {
+    const iframeUrl = findResultsIframeUrl(htmlContent);
+    if (iframeUrl) {
+      console.log(`Found embedded results page: ${iframeUrl}`);
+      htmlContent = await fetchHtml(iframeUrl);
+      match = htmlContent.match(regex);
+    }
+  }
 
   if (!match || !match[1]) {
     throw new Error(
-      "Could not find __NEXT_DATA__ script tag in the fetched HTML."
+      "Could not find __NEXT_DATA__ script tag in the fetched HTML. " +
+        "Use an ironman.com race results page or the labs-v2.competitor.com " +
+        "event group URL."
     );
   }
 
@@ -191,6 +223,22 @@ function getYearFromName(eventName) {
 }
 
 /**
+ * Builds a filename suffix to tell apart events that share a year
+ * (e.g. separate Women's and Men's World Championship races).
+ */
+function getEventSuffix(eventName) {
+  if (!eventName) return "event";
+  if (/\bwomen\b/i.test(eventName)) return "women";
+  if (/\bmen\b/i.test(eventName)) return "men";
+  const slug = eventName
+    .replace(/\b20\d{2}\b/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return slug || "event";
+}
+
+/**
  * Main function to run the script
  */
 (async () => {
@@ -223,6 +271,7 @@ function getYearFromName(eventName) {
 
     console.log(`Found ${subEvents.length} total events to scrape.`);
 
+    const events = [];
     for (const event of subEvents) {
       const eventUuid = event.wtc_eventid;
       const eventYear = getYearFromName(
@@ -236,19 +285,44 @@ function getYearFromName(eventName) {
         continue;
       }
 
-      console.log(`--- Processing Event: ${eventYear} ---`);
+      events.push({ eventUuid, eventYear, eventName: event.wtc_name });
+    }
+
+    // Only add a suffix when more than one event shares a year, so
+    // single-race events keep the plain "<base>_<year>.csv" name.
+    const eventsPerYear = {};
+    for (const { eventYear } of events) {
+      eventsPerYear[eventYear] = (eventsPerYear[eventYear] || 0) + 1;
+    }
+
+    const usedFiles = new Set();
+    for (const event of events) {
+      let fileBase = `${eventNameBase}_${event.eventYear}`;
+      if (eventsPerYear[event.eventYear] > 1) {
+        fileBase += `_${getEventSuffix(event.eventName)}`;
+      }
+
+      let outputFile = `${fileBase}.csv`;
+      for (let n = 2; usedFiles.has(outputFile); n++) {
+        outputFile = `${fileBase}_${n}.csv`;
+      }
+      usedFiles.add(outputFile);
+      event.outputFile = outputFile;
+    }
+
+    for (const { eventUuid, eventYear, eventName, outputFile } of events) {
+      const eventLabel = eventName || eventYear;
+      console.log(`--- Processing Event: ${eventLabel} ---`);
 
       try {
         const resultsData = await fetchResultsForEvent(eventUuid);
 
         if (!resultsData || resultsData.length === 0) {
-          console.log(`No results found for ${eventYear}. Skipping.`);
+          console.log(`No results found for ${eventLabel}. Skipping.`);
           continue;
         }
 
         const csvData = convertToCSV(resultsData);
-
-        const outputFile = `${eventNameBase}_${eventYear}.csv`;
 
         await fs.writeFile(outputFile, csvData);
         console.log(
@@ -256,7 +330,7 @@ function getYearFromName(eventName) {
         );
       } catch (apiError) {
         console.error(
-          `Failed to process ${eventYear} (UUID: ${eventUuid}). Error: ${apiError.message}`
+          `Failed to process ${eventLabel} (UUID: ${eventUuid}). Error: ${apiError.message}`
         );
       }
     }
