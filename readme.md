@@ -1,6 +1,6 @@
 # Ironman / Competitor.com Race Results Scraper
 
-A simple, zero-dependency Node.js script to scrape all historical and current race results from an ironman.com race results page (or the `labs-v2.competitor.com` event page it embeds) and save them as comprehensive CSV files.
+A simple, zero-dependency Node.js script to scrape all historical and current race results from any ironman.com race page (or the `labs-v2.competitor.com` results page that ironman.com embeds) and save them as comprehensive CSV files.
 
 This script is designed to fetch all available years for a single event group (e.g., "IRONMAN 70.3 Chattanooga") and create a separate, detailed CSV for each year.
 
@@ -34,10 +34,10 @@ This script is designed to fetch all available years for a single event group (e
     ```
 4.  **Answer the Prompts:**
 
-    **Prompt 1:** `Please paste the main event group URL:`
+    **Prompt 1:** `Please paste the race URL:`
 
-    - Paste the event's results page from Ironman's website. The script finds the embedded `labs-v2.competitor.com` "event group" page (the one with the year dropdown) and reads from that.
-    - **Example URL:** `https://www.ironman.com/races/im703-chattanooga/results`
+    - Paste any page for the race from Ironman's website: the race's home page, its results page, or any other page under it (schedule, course, etc.). The script goes to the race's results page and reads the embedded `labs-v2.competitor.com` "event group" page (the one with the year dropdown).
+    - **Example URLs:** `https://www.ironman.com/races/im703-chattanooga/`, `https://www.ironman.com/races/im703-chattanooga/results`
     - You can also paste the `labs-v2.competitor.com` event group URL directly, e.g. `https://labs-v2.competitor.com/results/event/e2352999-586b-e411-93fa-005056951bf1`
 
     **Prompt 2:** `Enter a base name for the event (e.g., chattanooga):`
@@ -53,7 +53,7 @@ The script will then fetch the data for each year and save the CSV files in the 
 
 This scraper works in three main steps, which is why it's more reliable than a simple HTML scraper:
 
-1.  **Fetch Page Data:** It first fetches the URL you entered. If it's an ironman.com results page, it follows the embedded `labs-v2.competitor.com` iframe to the event group page. It then parses the `<script id="__NEXT_DATA__">` JSON blob embedded in that page's HTML.
+1.  **Fetch Page Data:** If you entered an ironman.com race page, it goes to that race's `/results` page and follows the embedded `labs-v2.competitor.com` iframe to the event group page. It then parses the `<script id="__NEXT_DATA__">` JSON blob embedded in that page's HTML.
 2.  **Find All Events:** It finds the `subevents` key in that JSON to get a list of all available years and their unique `wtc_eventid`s.
 3.  **Call the API:** It loops through each event and calls the site's internal API (`/api/results?wtc_eventid=...`) to get the complete, clean JSON for that specific year's results.
 4.  **Save CSVs:** It parses that JSON and saves it to a CSV file named with your base name and the event year (plus `_women`/`_men` or similar when a year has more than one race).
@@ -62,7 +62,7 @@ This scraper works in three main steps, which is why it's more reliable than a s
 
 ## Troubleshooting
 
-- **"Could not find **NEXT_DATA** script tag...":** The URL you entered is likely incorrect (use the event's results page, e.g. `https://www.ironman.com/races/im703-chattanooga/results`), or the website has changed its HTML structure.
+- **"Could not find **NEXT_DATA** script tag...":** The URL you entered is likely incorrect (use a page for the race, e.g. `https://www.ironman.com/races/im703-chattanooga/`), or the website has changed its HTML structure.
 - **"Could not find "subevents"...":** You may have used a URL for a single race instead of the main "event group" URL that has the year dropdown.
 - **"API request failed...":** The website's API may have changed or is temporarily down.
 

@@ -37,6 +37,51 @@ async function fetchHtml(url) {
 }
 
 /**
+ * Maps any page within an ironman.com race (e.g. ".../races/im703-augusta/"
+ * or ".../races/im703-augusta/schedule") to that race's results page.
+ * Requests the race's home page first so redirects from older or alias
+ * links (e.g. "ironman.com/im703-augusta" or
+ * ".../races/im703-world-championship") land on the current race URL.
+ * Other URLs are returned unchanged.
+ */
+async function getResultsPageUrl(url) {
+  const racePath = /^\/races\/([^\/]+)/i;
+
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+
+  if (!/(^|\.)ironman\.com$/i.test(parsed.hostname)) {
+    return url;
+  }
+
+  const match = parsed.pathname.match(racePath);
+  const raceHomeUrl = match ? `${parsed.origin}/races/${match[1]}` : url;
+
+  const response = await fetch(raceHomeUrl, {
+    method: "HEAD",
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36",
+    },
+  });
+  if (!response.ok) {
+    return url;
+  }
+
+  const finalUrl = new URL(response.url);
+  const finalMatch = finalUrl.pathname.match(racePath);
+  if (!finalMatch) {
+    return url;
+  }
+
+  return `${finalUrl.origin}/races/${finalMatch[1]}/results`;
+}
+
+/**
  * Finds the competitor.com results iframe embedded in an ironman.com
  * results page. Skips the other embeds (e.g. ".../results/event/odiv/..."
  * and ".../clubpoints/...").
@@ -73,8 +118,9 @@ async function fetchNextData(url) {
   if (!match || !match[1]) {
     throw new Error(
       "Could not find __NEXT_DATA__ script tag in the fetched HTML. " +
-        "Use an ironman.com race results page or the labs-v2.competitor.com " +
-        "event group URL."
+        "Use a page from an ironman.com race (e.g. " +
+        "https://www.ironman.com/races/im703-augusta) or the " +
+        "labs-v2.competitor.com event group URL."
     );
   }
 
@@ -245,7 +291,7 @@ function getEventSuffix(eventName) {
   const io = createQuestionInterface();
 
   try {
-    const eventUrl = await io.ask("Please paste the main event group URL: ");
+    const eventUrl = (await io.ask("Please paste the race URL: ")).trim();
     if (!eventUrl.startsWith("http")) {
       throw new Error("Invalid URL.");
     }
@@ -258,7 +304,7 @@ function getEventSuffix(eventName) {
       .replace(/\s+/g, "_")
       .replace(/[^a-z0-9_]/g, "");
 
-    const jsonData = await fetchNextData(eventUrl);
+    const jsonData = await fetchNextData(await getResultsPageUrl(eventUrl));
     const pageProps = jsonData?.props?.pageProps;
 
     const subEvents = pageProps?.subevents;
