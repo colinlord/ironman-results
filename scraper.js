@@ -176,6 +176,15 @@ async function fetchResultsFromApi(API_URL) {
 const UNRANKED = 99999;
 
 /**
+ * Tidies the whitespace in a free-text profile field: trims the ends and
+ * turns line breaks and repeated spaces into a single space. Every other
+ * character is left exactly as IRONMAN has it.
+ */
+function cleanWhitespace(value) {
+  return (value ?? "").replace(/\s+/g, " ").trim();
+}
+
+/**
  * Returns the athlete's gender. Uses the division's gender, which is what
  * IRONMAN's gender ranks use (the profile gender is sometimes missing or
  * contradicts it), falling back to the profile gender for divisions that
@@ -320,10 +329,10 @@ function convertToCSV(data) {
 
     return {
       "Bib Number": r.bib,
-      "Athlete Name": r.athlete,
+      "Athlete Name": cleanWhitespace(r.athlete),
       Gender: getGender(r),
-      City: r.wtc_ContactId?.address1_city || "",
-      State: r.wtc_ContactId?.address1_stateorprovince || "",
+      City: cleanWhitespace(r.wtc_ContactId?.address1_city),
+      State: cleanWhitespace(r.wtc_ContactId?.address1_stateorprovince),
       Country: r.countryiso2,
       Division:
         r.wtc_AgeGroupId?.wtc_agegroupname || r.wtc_DivisionId?.wtc_name || "",

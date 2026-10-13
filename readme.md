@@ -94,6 +94,10 @@ A few more notes:
 - `Gender` is the gender of the athlete's division, which is what IRONMAN's gender ranks are based on. For divisions without one (e.g., PC, HC, and Open Division), it's the gender from the athlete's profile. Gender split ranks use the same value.
 - In the oldest races (e.g., 2006 and 2009), IRONMAN didn't record overall or gender ranks; its division ranks hold each athlete's overall place instead. For those races the script moves that value into `Overall Rank` (and the swim and position-after-bike overall columns), and IRONMAN's gender and division ranks are `99999`. The split ranks are calculated by the script, so they're filled in for every year.
 
+### Text Fields
+
+`Athlete Name`, `City`, and `State` come from what athletes typed into their profiles, so some have stray spaces or line breaks. The script removes spaces at the start and end and turns line breaks and repeated spaces into a single space (e.g., `"San Diego "` becomes `"San Diego"`). Nothing else in these values is changed.
+
 ### File Encoding
 
 The CSV files are saved as UTF-8 with a byte order mark (BOM), so Excel shows accented names correctly. Spreadsheet apps and tools like pandas handle this automatically. If you read the files with Python's built-in `csv` module, open them with `encoding="utf-8-sig"`. Otherwise the first column name will start with an invisible character.
