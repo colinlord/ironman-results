@@ -554,8 +554,6 @@ function getEventSuffix(eventName) {
       );
     }
 
-    console.log(`Found ${subEvents.length} total events.`);
-
     const events = [];
     for (const event of subEvents) {
       const eventUuid = event.wtc_eventid;
@@ -598,7 +596,17 @@ function getEventSuffix(eventName) {
     const years = [...new Set(events.map((e) => e.eventYear))].sort(
       (a, b) => b - a
     );
-    console.log(`Available years: ${years.join(", ")}`);
+    // Some years have more than one race (e.g. separate Women's and Men's,
+    // or pro and age-group races), so say how many races each year has.
+    const count = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+    console.log(
+      `Found ${count(events.length, "race")} across ${count(years.length, "year")}.`
+    );
+    console.log(
+      `Available years: ${years
+        .map((y) => (eventsPerYear[y] > 1 ? `${y} (${eventsPerYear[y]} races)` : y))
+        .join(", ")}`
+    );
 
     const yearChoice = (
       await io.ask("Enter a year, 'latest', or press Enter for all years: ")

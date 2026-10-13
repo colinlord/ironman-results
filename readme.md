@@ -51,7 +51,7 @@ This script is designed to fetch all available years for a single event group (e
 
     **Prompt 3:** `Enter a year, 'latest', or press Enter for all years:`
 
-    - The script first lists the years available for the event.
+    - The script first lists the years available for the event. If a year had more than one race (e.g., separate Women's and Men's races, or separate pro and age-group races), it shows how many, like `2026 (2 races)`, and each race is saved to its own file.
     - Press **Enter** (or type `all`) to download every year.
     - Type a year, like `2025`, to download only that year.
     - Type `latest` to download only the most recent year that has results. If this year's race is listed but hasn't been run yet, it falls back to the previous year. For events with more than one race in a year (like the Women's and Men's World Championship), all of that year's races are downloaded.
