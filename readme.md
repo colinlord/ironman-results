@@ -7,7 +7,7 @@ This script is designed to fetch all available years for a single event group (e
 ## Features
 
 - **Fetches All Years:** Grabs data for the most recent race _and_ all available past years, or just one year or the most recent year if you prefer.
-- **Comprehensive Data:** Exports 30+ columns, including:
+- **Comprehensive Data:** Exports 49 columns, including:
   - Finish times and all splits (Swim, T1, Bike, T2, Run).
   - Raw times in seconds (ideal for analysis).
   - Overall, Gender, and Division ranks for the finish and swim, plus split ranks for T1, the bike, T2, and the run, and each athlete's position after the bike (see [Ranks](#ranks)).
@@ -129,7 +129,7 @@ The CSV files are saved as UTF-8 with a byte order mark (BOM), so Excel shows ac
 
 ## How It Works
 
-This scraper works in three main steps, which is why it's more reliable than a simple HTML scraper:
+This scraper works in four main steps, which is why it's more reliable than a simple HTML scraper:
 
 1.  **Fetch Page Data:** If you entered an ironman.com race page, it goes to that race's `/results` page and follows the embedded `labs-v2.competitor.com` iframe to the event group page. It then parses the `<script id="__NEXT_DATA__">` JSON blob embedded in that page's HTML.
 2.  **Find All Events:** It finds the `subevents` key in that JSON to get a list of all available years and their unique `wtc_eventid`s.
