@@ -93,6 +93,7 @@ A few more notes:
 - If a race didn't have one of the transitions, its split rank columns are left empty. For example, when the swim is canceled and the race starts on the bike, there's no T1, so the T1 split ranks are empty (T2 is still ranked).
 - Split ranks only include athletes IRONMAN ranked at the finish. In most races that's the same group IRONMAN's own swim ranks cover. The exception is the oldest races, where IRONMAN's swim ranks and position after bike also include some DNF athletes.
 - `Gender` is the gender of the athlete's division, which is what IRONMAN's gender ranks are based on. For divisions without one (e.g., PC, HC, and Open Division), it's the gender from the athlete's profile. Gender split ranks use the same value.
+- `Profile Gender` is the gender on the athlete's IRONMAN account, exactly as IRONMAN has it. It occasionally differs from `Gender`.
 - In the oldest races (e.g., 2006 and 2009), IRONMAN didn't record overall or gender ranks; its division ranks hold each athlete's overall place instead. For those races the script moves that value into `Overall Rank` (and the swim and position-after-bike overall columns), and IRONMAN's gender and division ranks are `99999`. The split ranks are calculated by the script, so they're filled in for every year.
 
 ### Times and Points
@@ -109,11 +110,12 @@ Times and points are exactly as IRONMAN records them, including zeros:
 
 The two often differ, for example for athletes who live in one country and race for another.
 
-### IDs
+### Bib Numbers and IDs
 
+- `Bib Number` is IRONMAN's bib number. `Bib Label` is the race number some pros wear instead (e.g., `F2` for bib `5002`), when IRONMAN records one. Most races don't have bib labels, so this column is usually empty.
 - `Result ID` is unique to each row: one athlete's result in one race.
 - `Athlete ID` is the athlete's IRONMAN account, so it stays the same across races and years. Use it instead of names to follow an athlete over time: different athletes can share a name, and names aren't always typed the same way.
-- Occasionally the same `Athlete ID` appears twice in one race, for example when an athlete has two entries (such as a DNS and a finish), or when one account was used to register someone else. Both rows then show the same name.
+- Occasionally the same `Athlete ID` appears twice in one race, for example when an athlete has two entries (such as a DNS and a finish).
 
 ### Text Fields
 

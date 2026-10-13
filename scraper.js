@@ -277,12 +277,14 @@ function convertToCSV(data) {
   // 1. Updated Headers
   const headers = [
     "Bib Number",
+    "Bib Label",
     "Athlete Name",
     "First Name",
     "Last Name",
     "Athlete ID",
     "Result ID",
     "Gender",
+    "Profile Gender",
     "City",
     "State",
     "Country of Residence",
@@ -334,17 +336,23 @@ function convertToCSV(data) {
 
     return {
       "Bib Number": r.bib,
+      // The race number some pros wear (e.g. "F2" for bib 5002), when
+      // IRONMAN records one; empty for everyone else.
+      "Bib Label": r.wtc_bibnumber_v2,
       "Athlete Name": cleanWhitespace(r.athlete),
       // As the athlete entered them, which handles multi-word surnames
       // that splitting "Athlete Name" would get wrong.
       "First Name": cleanWhitespace(r.wtc_ContactId?.firstname),
       "Last Name": cleanWhitespace(r.wtc_ContactId?.lastname),
       // The athlete's IRONMAN account, which stays the same across races
-      // and years. Occasionally one account registers more than one racer.
+      // and years.
       "Athlete ID": r.wtc_ContactId?.contactid,
       // Unique to this athlete's result in this race.
       "Result ID": r.wtc_resultid,
       Gender: getGender(r),
+      // The gender on the athlete's IRONMAN account, which occasionally
+      // differs from the division they raced in.
+      "Profile Gender": r.wtc_ContactId?.gendercode_formatted,
       City: cleanWhitespace(r.wtc_ContactId?.address1_city),
       State: cleanWhitespace(r.wtc_ContactId?.address1_stateorprovince),
       // Exactly as IRONMAN has it; athletes enter it in many formats
