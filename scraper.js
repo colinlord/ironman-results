@@ -555,7 +555,9 @@ function getEventSuffix(eventName) {
 
         const csvData = convertToCSV(resultsData);
 
-        await fs.writeFile(outputFile, csvData);
+        // Start with a UTF-8 byte order mark so Excel reads accented names
+        // correctly instead of garbling them.
+        await fs.writeFile(outputFile, "\uFEFF" + csvData);
         latestYear = eventYear;
         console.log(
           `✅ Successfully saved ${resultsData.length} results to ${outputFile}`
