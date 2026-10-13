@@ -278,6 +278,8 @@ function convertToCSV(data) {
   const headers = [
     "Bib Number",
     "Athlete Name",
+    "Athlete ID",
+    "Result ID",
     "Gender",
     "City",
     "State",
@@ -331,6 +333,11 @@ function convertToCSV(data) {
     return {
       "Bib Number": r.bib,
       "Athlete Name": cleanWhitespace(r.athlete),
+      // The athlete's IRONMAN account, which stays the same across races
+      // and years. Occasionally one account registers more than one racer.
+      "Athlete ID": r.wtc_ContactId?.contactid,
+      // Unique to this athlete's result in this race.
+      "Result ID": r.wtc_resultid,
       Gender: getGender(r),
       City: cleanWhitespace(r.wtc_ContactId?.address1_city),
       State: cleanWhitespace(r.wtc_ContactId?.address1_stateorprovince),

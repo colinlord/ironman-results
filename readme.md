@@ -13,6 +13,7 @@ This script is designed to fetch all available years for a single event group (e
   - Overall, Gender, and Division ranks for the finish and swim, plus split ranks for T1, the bike, T2, and the run, and each athlete's position after the bike (see [Ranks](#ranks)).
   - Status for every athlete: finished, DNF, DNS, DQ, or not classified (see [Status](#status)).
   - Athlete info (City, State, Country of Residence, Country Represented).
+  - IRONMAN's Athlete ID and Result ID, for matching athletes across races and years.
   - AWA Points.
   - Open Division (ODIV) athletes, which IRONMAN's results API lists separately.
 - **No Dependencies:** Uses only built-in Node.js modules (v18+).
@@ -107,6 +108,12 @@ Times and points are exactly as IRONMAN records them, including zeros:
 - `Country of Residence` is the country from the athlete's home address (the same address as `City` and `State`), exactly as IRONMAN has it. Athletes typed it themselves, so formats vary (e.g., `US`, `usa`, `United States`).
 
 The two often differ, for example for athletes who live in one country and race for another.
+
+### IDs
+
+- `Result ID` is unique to each row: one athlete's result in one race.
+- `Athlete ID` is the athlete's IRONMAN account, so it stays the same across races and years. Use it instead of names to follow an athlete over time: different athletes can share a name, and names aren't always typed the same way.
+- Occasionally the same `Athlete ID` appears twice in one race, for example when an athlete has two entries (such as a DNS and a finish), or when one account was used to register someone else. Both rows then show the same name.
 
 ### Text Fields
 
