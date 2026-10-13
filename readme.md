@@ -23,7 +23,7 @@ This script is designed to fetch all available years for a single event group (e
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) (Version 18 or higher is recommended, as it includes `fetch` by default).
+- [Node.js](https://nodejs.org/) (Version 18 or higher is required, since the script uses its built-in `fetch`).
 
 ---
 
@@ -46,6 +46,7 @@ This script is designed to fetch all available years for a single event group (e
     **Prompt 2:** `Enter a base name for the event (e.g., chattanooga):`
 
     - This name is used to create the output files. If you enter `chattanooga`, the script will generate files like `chattanooga_2025.csv`, `chattanooga_2024.csv`, etc.
+    - Spaces become `_`, accented letters become plain ones (`Jönköping` becomes `jonkoping`), and other characters are dropped. If nothing is left, the script asks again.
     - If an event has more than one race in the same year (e.g., the separate Women's and Men's 70.3 World Championship races), each race gets its own file, like `worlds_2025_women.csv` and `worlds_2025_men.csv`.
 
     **Prompt 3:** `Enter a year, 'latest', or press Enter for all years:`
@@ -55,7 +56,7 @@ This script is designed to fetch all available years for a single event group (e
     - Type a year, like `2025`, to download only that year.
     - Type `latest` to download only the most recent year that has results. If this year's race is listed but hasn't been run yet, it falls back to the previous year. For events with more than one race in a year (like the Women's and Men's World Championship), all of that year's races are downloaded.
 
-The script will then fetch the data for the selected year(s) and save the CSV files in the same directory.
+The script will then fetch the data for the selected year(s) and save the CSV files in the same directory. CSV files are ignored by git, so downloaded results won't be committed by accident.
 
 ---
 
@@ -92,6 +93,7 @@ A few more notes:
 - A rank of `99999` means the athlete isn't ranked (non-finishers, Open Division, etc.). This is the value IRONMAN itself uses.
 - If a race didn't have one of the transitions, its split rank columns are left empty. For example, when the swim is canceled and the race starts on the bike, there's no T1, so the T1 split ranks are empty (T2 is still ranked).
 - Split ranks only include athletes IRONMAN ranked at the finish. In most races that's the same group IRONMAN's own swim ranks cover. The exception is the oldest races, where IRONMAN's swim ranks and position after bike also include some DNF athletes.
+- Aquabike races (swim and bike only) have no finish ranks, because IRONMAN marks every athlete `DNF`. For those, split ranks include the athletes IRONMAN ranked after the bike instead. With no run or T2, the run split ranks are `99999` and the T2 split ranks are empty.
 - `Gender` is the gender of the athlete's division, which is what IRONMAN's gender ranks are based on. For divisions without one (e.g., PC, HC, and Open Division), it's the gender from the athlete's profile. Gender split ranks use the same value.
 - `Profile Gender` is the gender on the athlete's IRONMAN account, exactly as IRONMAN has it. It occasionally differs from `Gender`.
 - In the oldest races (e.g., 2006 and 2009), IRONMAN didn't record overall or gender ranks; its division ranks hold each athlete's overall place instead. For those races the script moves that value into `Overall Rank` (and the swim and position-after-bike overall columns), and IRONMAN's gender and division ranks are `99999`. The split ranks are calculated by the script, so they're filled in for every year.
@@ -115,7 +117,7 @@ The two often differ, for example for athletes who live in one country and race 
 - `Bib Number` is IRONMAN's bib number. `Bib Label` is the race number some pros wear instead (e.g., `F2` for bib `5002`), when IRONMAN records one. Most races don't have bib labels, so this column is usually empty.
 - `Result ID` is unique to each row: one athlete's result in one race.
 - `Athlete ID` is the athlete's IRONMAN account, so it stays the same across races and years. Use it instead of names to follow an athlete over time: different athletes can share a name, and names aren't always typed the same way.
-- Occasionally the same `Athlete ID` appears twice in one race, for example when an athlete has two entries (such as a DNS and a finish).
+- Occasionally the same `Athlete ID` appears twice in one race, for example when an athlete has two entries (such as a DNS and a finish). In some races it's attached to two different official finishers, with different bibs, divisions, and times, and both rows show the same name. Check those columns before treating two rows with the same ID as the same person.
 
 ### Text Fields
 
@@ -140,7 +142,8 @@ This scraper works in four main steps, which is why it's more reliable than a si
 
 ## Troubleshooting
 
-- **"Could not find **NEXT_DATA** script tag...":** The URL you entered is likely incorrect (use a page for the race, e.g. `https://www.ironman.com/races/im703-chattanooga/`), or the website has changed its HTML structure.
+- **"Could not find `__NEXT_DATA__` script tag...":** The URL you entered is likely incorrect (use a page for the race, e.g. `https://www.ironman.com/races/im703-chattanooga/`), or the website has changed its HTML structure.
+- **"No results found on ...":** The race's page exists, but its results page doesn't have any results to download. The race may not have results on ironman.com yet.
 - **"Could not find "subevents"...":** You may have used a URL for a single race instead of the main "event group" URL that has the year dropdown.
 - **"API request failed...":** The website's API may have changed or is temporarily down.
 

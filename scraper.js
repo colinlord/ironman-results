@@ -12,6 +12,13 @@ function createQuestionInterface() {
     output: process.stdout,
   });
 
+  // While a prompt is open, Ctrl+C reaches readline instead of stopping the
+  // script, so stop it here.
+  rl.on("SIGINT", () => {
+    console.log();
+    process.exit(130);
+  });
+
   return {
     ask: (query) => new Promise((resolve) => rl.question(query, resolve)),
     close: () => rl.close(),
@@ -113,6 +120,17 @@ async function fetchNextData(url) {
       htmlContent = await fetchHtml(iframeUrl);
       match = htmlContent.match(regex);
     }
+  }
+
+  // An ironman.com race results page with no results embedded in it, e.g.
+  // a race that hasn't published results on ironman.com yet.
+  const isRaceResultsPage =
+    /^https?:\/\/([^/]+\.)?ironman\.com\/races\/[^/]+\/results\/?$/i.test(url);
+  if (!match && isRaceResultsPage) {
+    throw new Error(
+      `No results found on ${url}. This race may not have results on ` +
+        "ironman.com yet."
+    );
   }
 
   if (!match || !match[1]) {
@@ -265,11 +283,17 @@ function convertToCSV(data) {
     !data.some((r) => Number(r.wtc_finishrankoverall) < UNRANKED) &&
     data.some((r) => Number(r.wtc_finishrankgroup) < UNRANKED);
 
-  // Like IRONMAN's own swim rank, split ranks only include athletes
-  // IRONMAN ranked at the finish.
-  const isRanked = (r) =>
-    Number(legacyRanks ? r.wtc_finishrankgroup : r.wtc_finishrankoverall) <
-    UNRANKED;
+  // Split ranks only include athletes IRONMAN ranked at the finish. Some
+  // races have no finish ranks at all, like aquabikes (swim and bike only,
+  // where IRONMAN marks everyone DNF); those use the athletes IRONMAN ranked
+  // after the bike instead.
+  const finishRank = (r) =>
+    Number(legacyRanks ? r.wtc_finishrankgroup : r.wtc_finishrankoverall);
+  const bikeRank = (r) =>
+    Number(legacyRanks ? r.wtc_bikerankgroup : r.wtc_bikerankoverall);
+  const isRanked = data.some((r) => finishRank(r) < UNRANKED)
+    ? (r) => finishRank(r) < UNRANKED
+    : (r) => bikeRank(r) < UNRANKED;
   const bikeSplitRanks = computeSplitRanks(data, (r) => r.wtc_biketime, isRanked);
   const runSplitRanks = computeSplitRanks(data, (r) => r.wtc_runtime, isRanked);
 
@@ -498,13 +522,26 @@ function getEventSuffix(eventName) {
       throw new Error("Invalid URL.");
     }
 
-    let eventNameBase = await io.ask(
-      "Enter a base name for the event (e.g., chattanooga): "
-    );
-    eventNameBase = eventNameBase
-      .toLowerCase()
-      .replace(/\s+/g, "_")
-      .replace(/[^a-z0-9_]/g, "");
+    // Used in the file names: accented letters become plain ones
+    // ("jönköping" -> "jonkoping"), spaces become "_", and anything else
+    // that isn't a letter or number is dropped.
+    let eventNameBase = "";
+    while (!eventNameBase) {
+      eventNameBase = (
+        await io.ask("Enter a base name for the event (e.g., chattanooga): ")
+      )
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "_")
+        .replace(/[^a-z0-9_]/g, "")
+        .replace(/_+/g, "_")
+        .replace(/^_|_$/g, "");
+      if (!eventNameBase) {
+        console.log("Please enter a name with at least one letter or number.");
+      }
+    }
 
     const jsonData = await fetchNextData(await getResultsPageUrl(eventUrl));
     const pageProps = jsonData?.props?.pageProps;
@@ -568,6 +605,9 @@ function getEventSuffix(eventName) {
     )
       .trim()
       .toLowerCase();
+    // That was the last question. Closing the prompts now means Ctrl+C
+    // stops the downloads right away.
+    io.close();
 
     const latestOnly = yearChoice === "latest";
     let selectedEvents = events;
