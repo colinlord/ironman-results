@@ -185,6 +185,19 @@ function cleanWhitespace(value) {
 }
 
 /**
+ * Returns the athlete's division (age group), falling back to IRONMAN's
+ * other copy of the division name in case the nested age group details are
+ * ever missing.
+ */
+function getDivision(r) {
+  return (
+    r.wtc_AgeGroupId?.wtc_agegroupname ||
+    r._wtc_agegroupid_value_formatted ||
+    ""
+  );
+}
+
+/**
  * Returns the athlete's gender. Uses the division's gender, which is what
  * IRONMAN's gender ranks use (the profile gender is sometimes missing or
  * contradicts it), falling back to the profile gender for divisions that
@@ -214,7 +227,7 @@ function computeSplitRanks(data, getTime, isRanked) {
   const groupBy = {
     overall: () => "all",
     gender: getGender,
-    division: (r) => r.wtc_AgeGroupId?.wtc_agegroupname,
+    division: getDivision,
   };
   const pool = data.filter((r) => isRanked(r) && getTime(r) > 0);
 
@@ -361,8 +374,7 @@ function convertToCSV(data) {
       // The country the athlete races for, which can differ from where
       // they live.
       "Country Represented": r.countryiso2,
-      Division:
-        r.wtc_AgeGroupId?.wtc_agegroupname || r.wtc_DivisionId?.wtc_name || "",
+      Division: getDivision(r),
       // NC = not classified: no flag set and not an official finisher,
       // e.g. finished outside the time cutoffs.
       Status: r.wtc_dq
