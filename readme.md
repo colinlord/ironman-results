@@ -12,7 +12,7 @@ This script is designed to fetch all available years for a single event group (e
   - Raw times in seconds (ideal for analysis).
   - Overall, Gender, and Division ranks for the finish and swim, plus split ranks for T1, the bike, T2, and the run, and each athlete's position after the bike (see [Ranks](#ranks)).
   - Status for every athlete: finished, DNF, DNS, DQ, or not classified (see [Status](#status)).
-  - Athlete info (City, State, Country of Residence, Country Represented).
+  - Athlete info (First and Last Name, City, State, Country of Residence, Country Represented).
   - IRONMAN's Athlete ID and Result ID, for matching athletes across races and years.
   - AWA Points.
   - Open Division (ODIV) athletes, which IRONMAN's results API lists separately.
@@ -117,7 +117,7 @@ The two often differ, for example for athletes who live in one country and race 
 
 ### Text Fields
 
-`Athlete Name`, `City`, and `State` come from what athletes typed into their profiles, so some have stray spaces or line breaks. The script removes spaces at the start and end and turns line breaks and repeated spaces into a single space (e.g., `"San Diego "` becomes `"San Diego"`). Nothing else in these values is changed.
+`Athlete Name`, `First Name`, `Last Name`, `City`, and `State` come from what athletes typed into their profiles, so some have stray spaces or line breaks. The script removes spaces at the start and end and turns line breaks and repeated spaces into a single space (e.g., `"San Diego "` becomes `"San Diego"`). Nothing else in these values is changed.
 
 ### File Encoding
 

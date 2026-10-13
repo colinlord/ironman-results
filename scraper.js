@@ -278,6 +278,8 @@ function convertToCSV(data) {
   const headers = [
     "Bib Number",
     "Athlete Name",
+    "First Name",
+    "Last Name",
     "Athlete ID",
     "Result ID",
     "Gender",
@@ -333,6 +335,10 @@ function convertToCSV(data) {
     return {
       "Bib Number": r.bib,
       "Athlete Name": cleanWhitespace(r.athlete),
+      // As the athlete entered them, which handles multi-word surnames
+      // that splitting "Athlete Name" would get wrong.
+      "First Name": cleanWhitespace(r.wtc_ContactId?.firstname),
+      "Last Name": cleanWhitespace(r.wtc_ContactId?.lastname),
       // The athlete's IRONMAN account, which stays the same across races
       // and years. Occasionally one account registers more than one racer.
       "Athlete ID": r.wtc_ContactId?.contactid,
