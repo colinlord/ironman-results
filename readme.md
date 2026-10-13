@@ -10,9 +10,11 @@ This script is designed to fetch all available years for a single event group (e
 - **Comprehensive Data:** Exports 30+ columns, including:
   - Finish times and all splits (Swim, T1, Bike, T2, Run).
   - Raw times in seconds (ideal for analysis).
-  - Overall, Gender, and Division ranks for the finish, swim, bike, and run.
+  - Overall, Gender, and Division ranks for the finish and swim, plus split ranks for T1, the bike, T2, and the run, and each athlete's position after the bike (see [Ranks](#ranks)).
+  - Status for every athlete: finished, DNF, DNS, DQ, or not classified (see [Status](#status)).
   - Athlete info (City, State, Country).
   - AWA Points.
+  - Open Division (ODIV) athletes, which IRONMAN's results API lists separately.
 - **No Dependencies:** Uses only built-in Node.js modules (v18+).
 - **Interactive:** Prompts you for the URL, a filename, and which year(s) to download.
 
@@ -56,13 +58,51 @@ The script will then fetch the data for the selected year(s) and save the CSV fi
 
 ---
 
+## Understanding the Data
+
+### Status
+
+| Value | Meaning |
+| --- | --- |
+| `FIN` | Official finisher. |
+| `DNF` | Did not finish. |
+| `DNS` | Did not start. |
+| `DQ` | Disqualified. |
+| `NC` | Not classified: IRONMAN didn't mark them as a finisher, DNF, DNS, or DQ. In recent races these are usually athletes who completed the course outside the time cutoffs. Older races mark the same athletes `DNF`. |
+
+### Ranks
+
+There are two ways to rank a leg of the race, and they can be very different. A weak swimmer who's a strong cyclist might have the 5th-fastest bike split but still be 40th in the race at the end of the bike.
+
+- **Split rank** ranks athletes by the time of that leg alone: who had the fastest bike split, regardless of their swim.
+- **Position after a leg** ranks athletes by their total race time at the end of that leg: their place in the race coming off the bike (swim + T1 + bike).
+
+The CSV includes:
+
+| Columns | What they are |
+| --- | --- |
+| `Overall Rank`, `Gender Rank`, `Division Rank` | IRONMAN's official finish ranks. |
+| `Swim Rank (...)` | IRONMAN's swim ranks. For the first leg, the split rank and position after the swim are the same thing. |
+| `T1 Split Rank (...)`, `Bike Split Rank (...)`, `T2 Split Rank (...)`, `Run Split Rank (...)` | Calculated by this script from the T1, bike, T2, and run times alone, since IRONMAN doesn't provide them. Athletes with the same time share a rank. |
+| `Position After Bike (...)` | IRONMAN's own "bike rank", which is actually the position after the bike. (IRONMAN's "run rank" is the same as the finish rank, so it isn't repeated.) |
+
+A few more notes:
+
+- A rank of `99999` means the athlete isn't ranked (non-finishers, Open Division, etc.). This is the value IRONMAN itself uses.
+- If a race didn't have one of the transitions, its split rank columns are left empty. For example, when the swim is canceled and the race starts on the bike, there's no T1, so the T1 split ranks are empty (T2 is still ranked).
+- Split ranks only include athletes IRONMAN ranked at the finish. In most races that's the same group IRONMAN's own swim ranks cover. The exception is the oldest races, where IRONMAN's swim ranks and position after bike also include some DNF athletes.
+- `Gender` is the gender of the athlete's division, which is what IRONMAN's gender ranks are based on. For divisions without one (e.g., PC, HC, and Open Division), it's the gender from the athlete's profile. Gender split ranks use the same value.
+- In the oldest races (e.g., 2006 and 2009), IRONMAN didn't record overall or gender ranks; its division ranks hold each athlete's overall place instead. For those races the script moves that value into `Overall Rank` (and the swim and position-after-bike overall columns), and IRONMAN's gender and division ranks are `99999`. The split ranks are calculated by the script, so they're filled in for every year.
+
+---
+
 ## How It Works
 
 This scraper works in three main steps, which is why it's more reliable than a simple HTML scraper:
 
 1.  **Fetch Page Data:** If you entered an ironman.com race page, it goes to that race's `/results` page and follows the embedded `labs-v2.competitor.com` iframe to the event group page. It then parses the `<script id="__NEXT_DATA__">` JSON blob embedded in that page's HTML.
 2.  **Find All Events:** It finds the `subevents` key in that JSON to get a list of all available years and their unique `wtc_eventid`s.
-3.  **Call the API:** It loops through each selected event and calls the site's internal API (`/api/results?wtc_eventid=...`) to get the complete, clean JSON for that specific year's results.
+3.  **Call the API:** It loops through each selected event and calls the site's internal API (`/api/results?wtc_eventid=...`) to get the complete, clean JSON for that specific year's results. Open Division athletes come from a second call to the same API (`&agegroup=ODIV`).
 4.  **Save CSVs:** It parses that JSON and saves it to a CSV file named with your base name and the event year (plus `_women`/`_men` or similar when a year has more than one race).
 
 ---

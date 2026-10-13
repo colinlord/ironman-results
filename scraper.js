@@ -130,11 +130,27 @@ async function fetchNextData(url) {
 
 /**
  * Fetches the results JSON for a specific event UUID from the API.
+ * Open Division (ODIV) athletes are only returned when asked for by age
+ * group, so they're fetched separately and added to the end.
  */
 async function fetchResultsForEvent(eventUuid) {
   const API_URL = `https://labs-v2.competitor.com/api/results?wtc_eventid=${eventUuid}`;
   console.log(`Fetching results from API for event: ${eventUuid}`);
 
+  const results = await fetchResultsFromApi(API_URL);
+  const odivResults = await fetchResultsFromApi(`${API_URL}&agegroup=ODIV`);
+
+  const resultIds = new Set(results.map((r) => r.wtc_resultid));
+  return [
+    ...results,
+    ...odivResults.filter((r) => !resultIds.has(r.wtc_resultid)),
+  ];
+}
+
+/**
+ * Fetches one results API URL and returns its list of results.
+ */
+async function fetchResultsFromApi(API_URL) {
   const response = await fetch(API_URL, {
     headers: {
       "User-Agent":
@@ -156,11 +172,99 @@ async function fetchResultsForEvent(eventUuid) {
   throw new Error('API response did not contain "resultsJson.value".');
 }
 
+// The rank IRONMAN gives athletes who aren't ranked (non-finishers, ODIV, etc.).
+const UNRANKED = 99999;
+
+/**
+ * Returns the athlete's gender. Uses the division's gender, which is what
+ * IRONMAN's gender ranks use (the profile gender is sometimes missing or
+ * contradicts it), falling back to the profile gender for divisions that
+ * don't have one (e.g. PC, HC, ODIV).
+ */
+function getGender(r) {
+  return (
+    r.wtc_AgeGroupId?.wtc_gender_formatted ||
+    r.wtc_ContactId?.gendercode_formatted ||
+    ""
+  );
+}
+
+/**
+ * Ranks athletes by one leg's time alone (fastest = 1), overall and within
+ * each gender and division. Athletes with the same time share a rank
+ * (1, 2, 2, 4). Athletes outside the pool or without a time for the leg
+ * get UNRANKED, the same as in IRONMAN's own rank fields.
+ */
+function computeSplitRanks(data, getTime, isRanked) {
+  const ranks = new Map(
+    data.map((r) => [
+      r,
+      { overall: UNRANKED, gender: UNRANKED, division: UNRANKED },
+    ])
+  );
+  const groupBy = {
+    overall: () => "all",
+    gender: getGender,
+    division: (r) => r.wtc_AgeGroupId?.wtc_agegroupname,
+  };
+  const pool = data.filter((r) => isRanked(r) && getTime(r) > 0);
+
+  for (const [scope, getGroup] of Object.entries(groupBy)) {
+    const groups = new Map();
+    for (const r of pool) {
+      const group = getGroup(r);
+      if (!group) continue;
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group).push(r);
+    }
+
+    for (const members of groups.values()) {
+      members.sort((a, b) => getTime(a) - getTime(b));
+      members.forEach((r, i) => {
+        const prev = members[i - 1];
+        ranks.get(r)[scope] =
+          prev && getTime(prev) === getTime(r) ? ranks.get(prev)[scope] : i + 1;
+      });
+    }
+  }
+
+  return ranks;
+}
+
 /**
  * Converts the array of results (from the API) into a CSV string.
  * --- UPDATED HEADERS ---
  */
 function convertToCSV(data) {
+  // Older events (e.g. 2006, 2009) have no overall or gender ranks: they're
+  // UNRANKED for everyone, and the division ("group") ranks hold each
+  // athlete's overall place instead.
+  const legacyRanks =
+    !data.some((r) => Number(r.wtc_finishrankoverall) < UNRANKED) &&
+    data.some((r) => Number(r.wtc_finishrankgroup) < UNRANKED);
+
+  // Like IRONMAN's own swim rank, split ranks only include athletes
+  // IRONMAN ranked at the finish.
+  const isRanked = (r) =>
+    Number(legacyRanks ? r.wtc_finishrankgroup : r.wtc_finishrankoverall) <
+    UNRANKED;
+  const bikeSplitRanks = computeSplitRanks(data, (r) => r.wtc_biketime, isRanked);
+  const runSplitRanks = computeSplitRanks(data, (r) => r.wtc_runtime, isRanked);
+
+  // Transitions are only ranked if the race had them: e.g. there's no T1
+  // when the swim is canceled, so everyone's T1 time is 0. A transition
+  // counts as missing when most ranked athletes have no time for it, and
+  // its ranks are left empty.
+  const rankedAthletes = data.filter(isRanked);
+  const rankTransition = (getTime) =>
+    rankedAthletes.filter((r) => getTime(r) > 0).length >
+    rankedAthletes.length / 2
+      ? computeSplitRanks(data, getTime, isRanked)
+      : null;
+  const t1SplitRanks = rankTransition((r) => r.wtc_transition1time);
+  const t2SplitRanks = rankTransition((r) => r.wtc_transition2time);
+  const noRanks = { overall: "", gender: "", division: "" };
+
   // 1. Updated Headers
   const headers = [
     "Bib Number",
@@ -184,12 +288,21 @@ function convertToCSV(data) {
     "Swim Rank (Overall)",
     "Swim Rank (Gender)",
     "Swim Rank (Division)",
-    "Bike Rank (Overall)",
-    "Bike Rank (Gender)",
-    "Bike Rank (Division)",
-    "Run Rank (Overall)",
-    "Run Rank (Gender)",
-    "Run Rank (Division)",
+    "T1 Split Rank (Overall)",
+    "T1 Split Rank (Gender)",
+    "T1 Split Rank (Division)",
+    "Bike Split Rank (Overall)",
+    "Bike Split Rank (Gender)",
+    "Bike Split Rank (Division)",
+    "Position After Bike (Overall)",
+    "Position After Bike (Gender)",
+    "Position After Bike (Division)",
+    "T2 Split Rank (Overall)",
+    "T2 Split Rank (Gender)",
+    "T2 Split Rank (Division)",
+    "Run Split Rank (Overall)",
+    "Run Split Rank (Gender)",
+    "Run Split Rank (Division)",
     "Finish (Seconds)",
     "Swim (Seconds)",
     "T1 (Seconds)",
@@ -200,16 +313,31 @@ function convertToCSV(data) {
 
   // 2. Map data explicitly to those updated headers
   const rows = data.map((r) => {
+    const t1SplitRank = t1SplitRanks?.get(r) ?? noRanks;
+    const bikeSplitRank = bikeSplitRanks.get(r);
+    const t2SplitRank = t2SplitRanks?.get(r) ?? noRanks;
+    const runSplitRank = runSplitRanks.get(r);
+
     return {
       "Bib Number": r.bib,
       "Athlete Name": r.athlete,
-      Gender: r.wtc_ContactId?.gendercode_formatted || "",
+      Gender: getGender(r),
       City: r.wtc_ContactId?.address1_city || "",
       State: r.wtc_ContactId?.address1_stateorprovince || "",
       Country: r.countryiso2,
       Division:
         r.wtc_AgeGroupId?.wtc_agegroupname || r.wtc_DivisionId?.wtc_name || "",
-      Status: r.wtc_dnf ? "DNF" : r.wtc_dq ? "DQ" : "FIN",
+      // NC = not classified: no flag set and not an official finisher,
+      // e.g. finished outside the time cutoffs.
+      Status: r.wtc_dq
+        ? "DQ"
+        : r.wtc_dns
+        ? "DNS"
+        : r.wtc_dnf
+        ? "DNF"
+        : r.wtc_finisher
+        ? "FIN"
+        : "NC",
 
       "Finish Time": r.wtc_finishtimeformatted,
       "Swim Time": r.wtc_swimtimeformatted,
@@ -218,22 +346,45 @@ function convertToCSV(data) {
       "T2 Time": r.wtc_transitiontime2formatted,
       "Run Time": r.wtc_runtimeformatted,
 
-      "Overall Rank": r.wtc_finishrankoverall,
+      "Overall Rank": legacyRanks
+        ? r.wtc_finishrankgroup
+        : r.wtc_finishrankoverall,
       "Gender Rank": r.wtc_finishrankgender,
-      "Division Rank": r.wtc_finishrankgroup,
+      "Division Rank": legacyRanks ? UNRANKED : r.wtc_finishrankgroup,
       "AWA Points": r.wtc_points,
 
-      "Swim Rank (Overall)": r.wtc_swimrankoverall,
+      "Swim Rank (Overall)": legacyRanks
+        ? r.wtc_swimrankgroup
+        : r.wtc_swimrankoverall,
       "Swim Rank (Gender)": r.wtc_swimrankgender,
-      "Swim Rank (Division)": r.wtc_swimrankgroup,
+      "Swim Rank (Division)": legacyRanks ? UNRANKED : r.wtc_swimrankgroup,
 
-      "Bike Rank (Overall)": r.wtc_bikerankoverall,
-      "Bike Rank (Gender)": r.wtc_bikerankgender,
-      "Bike Rank (Division)": r.wtc_bikerankgroup,
+      "T1 Split Rank (Overall)": t1SplitRank.overall,
+      "T1 Split Rank (Gender)": t1SplitRank.gender,
+      "T1 Split Rank (Division)": t1SplitRank.division,
 
-      "Run Rank (Overall)": r.wtc_runrankoverall,
-      "Run Rank (Gender)": r.wtc_runrankgender,
-      "Run Rank (Division)": r.wtc_runrankgroup,
+      "Bike Split Rank (Overall)": bikeSplitRank.overall,
+      "Bike Split Rank (Gender)": bikeSplitRank.gender,
+      "Bike Split Rank (Division)": bikeSplitRank.division,
+
+      // IRONMAN's "bike rank" is the athlete's place in the race at the end
+      // of the bike (swim + T1 + bike), not a rank of the bike leg alone.
+      "Position After Bike (Overall)": legacyRanks
+        ? r.wtc_bikerankgroup
+        : r.wtc_bikerankoverall,
+      "Position After Bike (Gender)": r.wtc_bikerankgender,
+      "Position After Bike (Division)": legacyRanks
+        ? UNRANKED
+        : r.wtc_bikerankgroup,
+
+      "T2 Split Rank (Overall)": t2SplitRank.overall,
+      "T2 Split Rank (Gender)": t2SplitRank.gender,
+      "T2 Split Rank (Division)": t2SplitRank.division,
+
+      // IRONMAN's "run rank" is just the finish rank, so it's not repeated.
+      "Run Split Rank (Overall)": runSplitRank.overall,
+      "Run Split Rank (Gender)": runSplitRank.gender,
+      "Run Split Rank (Division)": runSplitRank.division,
 
       "Finish (Seconds)": r.wtc_finishtime,
       "Swim (Seconds)": r.wtc_swimtime,
