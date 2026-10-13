@@ -445,7 +445,8 @@ function convertToCSV(data) {
       .join(",");
   });
 
-  return [headerRow, ...dataRows].join("\n");
+  // End with a line break so files can be combined without merging rows.
+  return [headerRow, ...dataRows].join("\n") + "\n";
 }
 
 /**
