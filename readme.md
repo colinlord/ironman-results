@@ -12,7 +12,7 @@ This script is designed to fetch all available years for a single event group (e
   - Raw times in seconds (ideal for analysis).
   - Overall, Gender, and Division ranks for the finish and swim, plus split ranks for T1, the bike, T2, and the run, and each athlete's position after the bike (see [Ranks](#ranks)).
   - Status for every athlete: finished, DNF, DNS, DQ, or not classified (see [Status](#status)).
-  - Athlete info (City, State, Country).
+  - Athlete info (City, State, Country of Residence, Country Represented).
   - AWA Points.
   - Open Division (ODIV) athletes, which IRONMAN's results API lists separately.
 - **No Dependencies:** Uses only built-in Node.js modules (v18+).
@@ -93,6 +93,20 @@ A few more notes:
 - Split ranks only include athletes IRONMAN ranked at the finish. In most races that's the same group IRONMAN's own swim ranks cover. The exception is the oldest races, where IRONMAN's swim ranks and position after bike also include some DNF athletes.
 - `Gender` is the gender of the athlete's division, which is what IRONMAN's gender ranks are based on. For divisions without one (e.g., PC, HC, and Open Division), it's the gender from the athlete's profile. Gender split ranks use the same value.
 - In the oldest races (e.g., 2006 and 2009), IRONMAN didn't record overall or gender ranks; its division ranks hold each athlete's overall place instead. For those races the script moves that value into `Overall Rank` (and the swim and position-after-bike overall columns), and IRONMAN's gender and division ranks are `99999`. The split ranks are calculated by the script, so they're filled in for every year.
+
+### Times and Points
+
+Times and points are exactly as IRONMAN records them, including zeros:
+
+- A `0` in a `(Seconds)` column means IRONMAN has no time for that leg, e.g., the athlete didn't start or the swim was canceled. Leave these out before calculating averages or fastest times.
+- `AWA Points` of `0` means the athlete earned no points. An empty cell means IRONMAN has no points data, as in races from before the AWA program existed.
+
+### Countries
+
+- `Country Represented` is the country the athlete races for, as a 2-letter code. It's empty when IRONMAN lists the country as "Unknown".
+- `Country of Residence` is the country from the athlete's home address (the same address as `City` and `State`), exactly as IRONMAN has it. Athletes typed it themselves, so formats vary (e.g., `US`, `usa`, `United States`).
+
+The two often differ, for example for athletes who live in one country and race for another.
 
 ### Text Fields
 

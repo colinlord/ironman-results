@@ -281,7 +281,8 @@ function convertToCSV(data) {
     "Gender",
     "City",
     "State",
-    "Country",
+    "Country of Residence",
+    "Country Represented",
     "Division",
     "Status",
     "Finish Time",
@@ -333,7 +334,12 @@ function convertToCSV(data) {
       Gender: getGender(r),
       City: cleanWhitespace(r.wtc_ContactId?.address1_city),
       State: cleanWhitespace(r.wtc_ContactId?.address1_stateorprovince),
-      Country: r.countryiso2,
+      // Exactly as IRONMAN has it; athletes enter it in many formats
+      // (e.g. "US", "usa", "United States").
+      "Country of Residence": r.wtc_ContactId?.address1_country,
+      // The country the athlete races for, which can differ from where
+      // they live.
+      "Country Represented": r.countryiso2,
       Division:
         r.wtc_AgeGroupId?.wtc_agegroupname || r.wtc_DivisionId?.wtc_name || "",
       // NC = not classified: no flag set and not an official finisher,
@@ -409,7 +415,9 @@ function convertToCSV(data) {
   const dataRows = rows.map((row) => {
     return headers
       .map((header) => {
-        let value = String(row[header] || "");
+        // Keep IRONMAN's 0 values (e.g. 0 AWA points, 0 seconds for a
+        // leg with no time); only missing values become empty.
+        let value = String(row[header] ?? "");
         value = value.replace(/"/g, '""');
         return `"${value}"`;
       })
