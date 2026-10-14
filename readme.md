@@ -17,7 +17,7 @@ This script is designed to fetch all available years for a single event group (e
   - AWA Points.
   - Open Division (ODIV) athletes, which IRONMAN's results API lists separately.
 - **No Dependencies:** Uses only built-in Node.js modules (v18+).
-- **Interactive:** Prompts you for the URL, a filename, and which year(s) to download.
+- **Interactive:** Prompts you for the URL and which year(s) to download, and names the files after the race in the URL.
 
 ---
 
@@ -43,11 +43,15 @@ This script is designed to fetch all available years for a single event group (e
     - **Example URLs:** `https://www.ironman.com/races/im703-chattanooga/`, `https://www.ironman.com/races/im703-chattanooga/results`
     - You can also paste the `labs-v2.competitor.com` event group URL directly, e.g. `https://labs-v2.competitor.com/results/event/e2352999-586b-e411-93fa-005056951bf1`
 
-    **Prompt 2:** `Enter a base name for the event (e.g., chattanooga):`
+    The output files are named after the race's name in the URL, the part after `/races/`. For `https://www.ironman.com/races/im703-chattanooga`, the script generates files like `im703-chattanooga_2025.csv`, `im703-chattanooga_2024.csv`, etc.
 
-    - This name is used to create the output files. If you enter `chattanooga`, the script will generate files like `chattanooga_2025.csv`, `chattanooga_2024.csv`, etc.
-    - Spaces become `_`, accented letters become plain ones (`Jönköping` becomes `jonkoping`), and other characters are dropped. If nothing is left, the script asks again.
-    - If an event has more than one race in the same year (e.g., the separate Women's and Men's 70.3 World Championship races), each race gets its own file, like `worlds_2025_women.csv` and `worlds_2025_men.csv`.
+    - If the URL you paste redirects to a different race URL, the name from the URL you pasted is used. For example, `https://www.ironman.com/races/im703-world-championship` redirects to `.../races/im703-world-championship-2026`, but the files still start with `im703-world-championship_`. If the URL you paste doesn't have `/races/` in it (e.g., `https://www.ironman.com/im703-augusta`), the name comes from the race URL it redirects to.
+    - If an event has more than one race in the same year (e.g., the separate Women's and Men's 70.3 World Championship races), each race gets its own file, like `im703-world-championship_2025_women.csv` and `im703-world-championship_2025_men.csv`.
+
+    **Prompt 2 (only if needed):** `Enter a base name for the event (e.g., im703-chattanooga):`
+
+    - The script only asks for a name when it can't get one from the URL, e.g., when you paste a `labs-v2.competitor.com` URL. If you enter `chattanooga`, the script will generate files like `chattanooga_2025.csv`.
+    - Letters are lowercased, accented letters become plain ones (`Jönköping` becomes `jonkoping`), spaces become `_`, and anything other than letters, numbers, `-`, and `_` is dropped. If nothing is left, the script asks again.
 
     **Prompt 3:** `Enter a year, 'latest', or press Enter for all years:`
 
@@ -136,7 +140,7 @@ This scraper works in four main steps, which is why it's more reliable than a si
 1.  **Fetch Page Data:** If you entered an ironman.com race page, it goes to that race's `/results` page and follows the embedded `labs-v2.competitor.com` iframe to the event group page. It then parses the `<script id="__NEXT_DATA__">` JSON blob embedded in that page's HTML.
 2.  **Find All Events:** It finds the `subevents` key in that JSON to get a list of all available years and their unique `wtc_eventid`s.
 3.  **Call the API:** It loops through each selected event and calls the site's internal API (`/api/results?wtc_eventid=...`) to get the complete, clean JSON for that specific year's results. Open Division athletes come from a second call to the same API (`&agegroup=ODIV`).
-4.  **Save CSVs:** It parses that JSON and saves it to a CSV file named with your base name and the event year (plus `_women`/`_men` or similar when a year has more than one race).
+4.  **Save CSVs:** It parses that JSON and saves it to a CSV file named with the race's name from the URL (or the base name you entered) and the event year (plus `_women`/`_men` or similar when a year has more than one race).
 
 ---
 

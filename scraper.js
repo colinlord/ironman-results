@@ -89,6 +89,52 @@ async function getResultsPageUrl(url) {
 }
 
 /**
+ * Returns the race's slug from an ironman.com race URL (e.g.
+ * "im703-chattanooga" from ".../races/im703-chattanooga/results"), or ""
+ * for other URLs.
+ */
+function getRaceSlug(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return "";
+  }
+
+  if (!/(^|\.)ironman\.com$/i.test(parsed.hostname)) {
+    return "";
+  }
+
+  const match = parsed.pathname.match(/^\/races\/([^\/]+)/i);
+  if (!match) {
+    return "";
+  }
+
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
+/**
+ * Turns a name into the base of the output file names: accented letters
+ * become plain ones ("jönköping" -> "jonkoping"), spaces become "_", and
+ * anything else that isn't a letter, number, "-", or "_" is dropped.
+ */
+function toFileBase(name) {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_-]/g, "")
+    .replace(/_+/g, "_")
+    .replace(/^[_-]+|[_-]+$/g, "");
+}
+
+/**
  * Finds the competitor.com results iframe embedded in an ironman.com
  * results page. Skips the other embeds (e.g. ".../results/event/odiv/..."
  * and ".../clubpoints/...").
@@ -522,28 +568,31 @@ function getEventSuffix(eventName) {
       throw new Error("Invalid URL.");
     }
 
-    // Used in the file names: accented letters become plain ones
-    // ("jönköping" -> "jonkoping"), spaces become "_", and anything else
-    // that isn't a letter or number is dropped.
-    let eventNameBase = "";
+    const resultsPageUrl = await getResultsPageUrl(eventUrl);
+
+    // Name the files after the race's slug in the URL (e.g.
+    // "im703-chattanooga"). The pasted URL's slug comes first, since the
+    // one it redirects to can add a year (".../races/im703-world-championship"
+    // goes to "im703-world-championship-2026"). Only ask when neither URL
+    // has one, e.g. a labs-v2.competitor.com URL.
+    let eventNameBase =
+      toFileBase(getRaceSlug(eventUrl)) ||
+      toFileBase(getRaceSlug(resultsPageUrl));
+    if (eventNameBase) {
+      console.log(`Using "${eventNameBase}" from the URL to name the files.`);
+    }
     while (!eventNameBase) {
-      eventNameBase = (
-        await io.ask("Enter a base name for the event (e.g., chattanooga): ")
-      )
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, "_")
-        .replace(/[^a-z0-9_]/g, "")
-        .replace(/_+/g, "_")
-        .replace(/^_|_$/g, "");
+      eventNameBase = toFileBase(
+        await io.ask(
+          "Enter a base name for the event (e.g., im703-chattanooga): "
+        )
+      );
       if (!eventNameBase) {
         console.log("Please enter a name with at least one letter or number.");
       }
     }
 
-    const jsonData = await fetchNextData(await getResultsPageUrl(eventUrl));
+    const jsonData = await fetchNextData(resultsPageUrl);
     const pageProps = jsonData?.props?.pageProps;
 
     const subEvents = pageProps?.subevents;
